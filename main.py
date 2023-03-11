@@ -1,6 +1,12 @@
 import numpy
 
 def create_generate_matrix(n, k):
+    """
+    Функция генерации порождающей канонической матрицы
+    :param n: общее количество бит
+    :param k:количество информационных бит
+    :return:матрица-генератор
+    """
     ed = numpy.eye(k, dtype=int)
     p = {}
     p[4] = numpy.array([[1,1], [0, 1]])
@@ -12,7 +18,14 @@ def create_generate_matrix(n, k):
     return g
 
 
-def calc_h_matrix(g, f):
+def calc_h_matrix(g, f, transp = True):
+    """
+    Функция для получения проверочной матрицы
+    :param g:матрица-генератор
+    :param f:поле над которым заданы матрицы
+    :param transp: True - транспонированная, False - не транспонированная
+    :return:
+    """
     (k, n) = g.shape
     p = g[0, k:n]
     for i in range(1, k):
@@ -23,16 +36,31 @@ def calc_h_matrix(g, f):
         for j in range(k):
             h[i, j] = (-1*h[i, j])%f
     h = numpy.vstack([h, numpy.eye(k, dtype=int)])
+    if transp==False:
+        h = numpy.transpose(h)
     return h
 
 
 def bit_xor(string1, string2, f):
+    """
+    Побитовое сложение
+    :param string1: первое число в виде строки
+    :param string2: второе число в виде строки
+    :param f: поле над которым происходит сложение
+    :return: строка с результатом сложения
+    """
     answer = ''
     for i in range(len(string1)):
         answer += str((int(string1[i]) + int(string2[i]))%f)
     return answer
 
 def innum(chislo, ss):
+    """
+    Перевод из десятичной СС в ss-систему счисления
+    :param chislo: число в 10 СС
+    :param ss: необходимая СС
+    :return: число в ss-ной СС
+    """
     n = ''
     k = ''
     while chislo > 0:
@@ -45,6 +73,12 @@ def innum(chislo, ss):
 
 
 def create_table_standard_location(matrix, f):
+    """
+    Создание таблицы стандартного расположения
+    :param matrix: матрица-генератор
+    :param f: поле используемое в матрице
+    :return: таблица стандартного расположения
+    """
     (k, n) = matrix.shape
     mas = ['0'*n]
     lc = k+1
@@ -88,17 +122,43 @@ def create_table_standard_location(matrix, f):
 
 
 def decod_for_standard_location(table, element):
+    """
+    Декодирование по стандартному расположению
+    :param table: таблица стандартного расположения
+    :param element: элемент (верный или который необходимо исправить)
+    :return: исправленный элемент
+    """
     (k, n) = table.shape
     for i in range(k):
         for j in range(n):
             if (table[i,j]==element):
-                return table[i, 0]
+                return table[0, j]
 
-fq = 3
-a = create_generate_matrix(6, 4)
-print(a)
+def decoding_by_syndrome(table, element):
+    pass
+
+
+def get_table_syndrom(table_standard_location, matrix_ht):
+    leader = []
+    syndrome = []
+    for i in table_standard_location:
+        leader.append(i[0])
+        element = [int(i) for i in i[0]]
+        element = numpy.array(element)
+        s = numpy.dot(element, matrix_ht)
+        ns = ''
+        for j in s:
+            ns += str(j)
+        ns = '0'*(len(i[0])-len(ns)) + ns
+        syndrome.append(ns)
+    return numpy.array([leader, syndrome])
+
+
+fq = 2
+a = create_generate_matrix(4, 2)
+c = calc_h_matrix(a, fq)
 b = create_table_standard_location(a, fq)
-print(b, b.shape)
+print(get_table_syndrom(b, c))
 
 
 # for i in range(2**11):
