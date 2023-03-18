@@ -9,7 +9,7 @@ def create_generate_matrix(n, k):
     """
     ed = numpy.eye(k, dtype=int)
     p = {}
-    p[4] = numpy.array([[1,1], [0, 1]])
+    p[4] = numpy.array([[0,1], [1, 1]])
     p[15] = numpy.array([[1, 0, 0, 1], [1, 0, 1, 1], [1, 1, 1, 1], [0, 1, 1, 1],
                            [1, 1, 1, 0], [0, 1, 0, 1], [1, 0, 1, 0], [1, 1, 0, 1],
                           [0, 0, 1, 1], [0, 1, 1, 0], [1, 1, 0, 0]])
@@ -134,11 +134,33 @@ def decod_for_standard_location(table, element):
             if (table[i,j]==element):
                 return table[0, j]
 
-def decoding_by_syndrome(table, element):
-    pass
-
+def decoding_by_syndrome(table, element, f, h):
+    """
+    Декодирование по синдрому
+    :param table: таблица
+    :param element: элемент который нужно исправить
+    :param f: поле в котором мы работаем
+    :param h: матрица H
+    :return: исправленный элемент
+    """
+    element = [int(i) for i in element]
+    element1 = numpy.dot(h, element)
+    element = ''
+    for i in element1:
+        element += str(i%f)
+    for i in range(table.shape[1]):
+        if element==table[0, i]:
+            element = bit_xor(element, table[1, i], f)
+            break
+    return element
 
 def get_table_syndrom(table_standard_location, matrix_ht):
+    """
+    Создание таблицы для декодирования по синдрому
+    :param table_standard_location: таблица стандартного расположения
+    :param matrix_ht: транспонированная матрица H
+    :return: таблица синдромов и ошибок
+    """
     leader = []
     syndrome = []
     for i in table_standard_location:
@@ -149,19 +171,17 @@ def get_table_syndrom(table_standard_location, matrix_ht):
         ns = ''
         for j in s:
             ns += str(j)
-        ns = '0'*(len(i[0])-len(ns)) + ns
         syndrome.append(ns)
-    return numpy.array([leader, syndrome])
+    return numpy.array([syndrome,leader])
+
+
 
 
 fq = 2
 a = create_generate_matrix(4, 2)
-c = calc_h_matrix(a, fq)
+h = calc_h_matrix(a, fq)
+hn = calc_h_matrix(a, fq, False)
 b = create_table_standard_location(a, fq)
-print(get_table_syndrom(b, c))
+d = get_table_syndrom(b, h)
 
 
-# for i in range(2**11):
-#     for j in range(2**4):
-#         if (b[j, i].count('1')==1):
-#             print(j, i)
