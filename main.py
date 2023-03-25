@@ -1,3 +1,6 @@
+import random
+import time
+
 import numpy
 
 def create_generate_matrix(n, k):
@@ -9,11 +12,20 @@ def create_generate_matrix(n, k):
     """
     ed = numpy.eye(k, dtype=int)
     p = {}
-    p[4] = numpy.array([[0,1], [1, 1]])
-    p[15] = numpy.array([[1, 0, 0, 1], [1, 0, 1, 1], [1, 1, 1, 1], [0, 1, 1, 1],
-                           [1, 1, 1, 0], [0, 1, 0, 1], [1, 0, 1, 0], [1, 1, 0, 1],
-                          [0, 0, 1, 1], [0, 1, 1, 0], [1, 1, 0, 0]])
+    p[4] = numpy.array([[0,1], [1, 0]])
+    p[15] = numpy.array([[1, 0, 0, 0],
+                         [0, 1, 0, 0],
+                         [0, 0, 1, 0],
+                         [0, 1, 0, 0],
+                         [0, 0, 1, 0],
+                         [0, 0, 0, 1],
+                         [0, 0, 1, 0],
+                         [1, 0, 0, 0],
+                         [0, 1, 0, 0],
+                         [0, 0, 0, 1],
+                         [1, 0, 0, 0]])
     p[6] = numpy.array([[1, 0], [1, 2], [2, 1], [0, 2]])
+    p[8] = numpy.array([[1, 0, 0, 0], [2, 2, 1, 0], [1, 0, 1, 1], [1, 2, 1, 1] ])
     g = numpy.hstack((ed, p[n]))
     return g
 
@@ -35,8 +47,8 @@ def calc_h_matrix(g, f, transp = True):
     for i in range(n-k):
         for j in range(k):
             h[i, j] = (-1*h[i, j])%f
-    h = numpy.vstack([h, numpy.eye(k, dtype=int)])
-    if transp==False:
+    h = numpy.hstack([h, numpy.eye(n-k, dtype=int)])
+    if transp==True:
         h = numpy.transpose(h)
     return h
 
@@ -128,11 +140,14 @@ def decod_for_standard_location(table, element):
     :param element: элемент (верный или который необходимо исправить)
     :return: исправленный элемент
     """
+    stroka = ''
+    for i in element:
+        stroka += str(i)
     (k, n) = table.shape
     for i in range(k):
         for j in range(n):
-            if (table[i,j]==element):
-                return table[0, j]
+            if (table[i,j]==stroka):
+                return numpy.array(list(map(int, table[0, j])))
 
 def decoding_by_syndrome(table, element, f, h):
     """
@@ -176,12 +191,160 @@ def get_table_syndrom(table_standard_location, matrix_ht):
 
 
 
+def test_correct():
+    """
+    Тестирование построение генерирующих и проверочных матриц
+    """
 
-fq = 2
-a = create_generate_matrix(4, 2)
-h = calc_h_matrix(a, fq)
-hn = calc_h_matrix(a, fq, False)
-b = create_table_standard_location(a, fq)
-d = get_table_syndrom(b, h)
+    """Начало тестов для кода (4, 2)"""
+    print('Проверка матриц для (4, 2) кода')
+    matrixg4 = create_generate_matrix(4, 2)
+    matrixh4 = calc_h_matrix(matrixg4, 2)
+    correct = True
+    for i in range(4):
+        chislo = list(map(int, bin(i)[2:]))
+        if len(chislo)<2:
+            chislo = [0]*(2-len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrixg4)
+        for j in range(4):
+            chislo[j] = chislo[j]%2
+        chislo = numpy.matmul(chislo, matrixh4)
+        if (2*(chislo[1]%2) + chislo[0]%2 != 0):
+            correct = False
+
+    if (correct):
+        print('Генерирующая и проверочная матрица для (4, 2) кода строятся верно!\n')
+    else:
+        print('Произошла ошибка! Матрицы построены неверно!\n')
+    """Конец теста матриц (4, 2) кода"""
+
+
+    """Начало тестов для кода (15, 11)"""
+    print('Проверка матриц для (15, 11) кода')
+    matrixg15 = create_generate_matrix(15, 11)
+    matrixh15 = calc_h_matrix(matrixg15, 2)
+    correct = True
+    for i in range(2**11):
+        chislo = list(map(int, bin(i)[2:]))
+        if len(chislo) < 11:
+            chislo = [0] * (11 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrixg15)
+        for j in range(15):
+            chislo[j] = chislo[j] % 2
+        chislo = numpy.matmul(chislo, matrixh15)
+        summa = 0
+        for j in range(4):
+            summa = summa*2 + chislo[j] % 2
+        if (summa != 0):
+            correct = False
+
+    if (correct):
+        print('Генерирующая и проверочная матрица для (15, 11) кода строятся верно!\n')
+    else:
+        print('Произошла ошибка! Матрицы построены неверно!\n')
+    """Конец теста матриц (15, 11) кода"""
+
+    """Начало тестов для (6, 4, 3) кода"""
+    print('Проверка матриц для (6, 4, 3) кода')
+    matrixg6 = create_generate_matrix(6, 4)
+    matrixh6 = calc_h_matrix(matrixg6, 3)
+    correct = True
+    for i in range(2 ** 4):
+        chislo = list(map(int, bin(i)[2:]))
+        if len(chislo) < 4:
+            chislo = [0] * (4 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrixg6)
+        for j in range(6):
+            chislo[j] = chislo[j] % 3
+        chislo = numpy.matmul(chislo, matrixh6)
+        summa = 0
+        for j in range(2):
+            summa = summa * 3 + chislo[j] % 3
+        if (summa != 0):
+            correct = False
+
+    if (correct):
+        print('Генерирующая и проверочная матрица для (6, 4, 3) кода строятся верно!\n')
+    else:
+        print('Произошла ошибка! Матрицы построены неверно!')
+    print()
+    """Конец тестов для (6, 4, 3) кода"""
+
+    """Начало тестов для (8, 4, 3) кода"""
+    print('Проверка матриц для (8, 4, 3) кода')
+    matrixg8 = create_generate_matrix(8, 4)
+    matrixh8 = calc_h_matrix(matrixg8, 3)
+    correct = True
+    for i in range(2 ** 4):
+        chislo = list(map(int, bin(i)[2:]))
+        if len(chislo) < 4:
+            chislo = [0] * (4 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrixg8)
+        for j in range(8):
+            chislo[j] = chislo[j] % 3
+        chislo = numpy.matmul(chislo, matrixh8)
+        summa = 0
+        for j in range(4):
+            summa = summa * 3 + chislo[j] % 3
+        if (summa != 0):
+            correct = False
+
+    if (correct):
+        print('Генерирующая и проверочная матрица для (8, 4, 3) кода строятся верно!\n')
+    else:
+        print('Произошла ошибка! Матрицы построены неверно!\n')
+    """Конец тестов для (8, 4, 3) кода"""
+
+
+def test_decod_standart_location():
+    matrix4 = create_generate_matrix(4,2)
+    table4 = create_table_standard_location(matrix4, 2)
+    matrix15 = create_generate_matrix(15,11)
+    table15 = create_table_standard_location(matrix15, 2)
+    matrix6 = create_generate_matrix(6,4)
+    table6 = create_table_standard_location(matrix6, 3)
+    matrix8 = create_generate_matrix(8,4)
+    table8 = create_table_standard_location(matrix8, 3)
+    """Старт тестов"""
+    t0 = time.time()
+    # (4,2) код
+    # for i in range(2**2):
+    #     chislo = list(map(int, bin(i)[2:]))
+    #     if len(chislo) < 2:
+    #         chislo = [0] * (2 - len(chislo)) + chislo
+    #     chislo = numpy.matmul(numpy.array(chislo), matrix4)
+    #     pr = numpy.copy(chislo)
+    #     pos = random.randint(0, 3)
+    #     chislo[pos] = (chislo[pos]+1)%2
+    #
+    #     chislo = decod_for_standard_location(table4, chislo)
+    #     if not numpy.array_equal(chislo, pr):
+    #         print('Ошибка декодирования')
+
+    # (15, 11) код
+    for i in range(2**11):
+        chislo = list(map(int, bin(i)[2:]))
+        if len(chislo) < 11:
+            chislo = [0] * (11 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrix15)
+        pr = numpy.copy(chislo)
+        pos = random.randint(0, 14)
+        chislo[pos] = (chislo[pos]+1) % 2
+
+        chislo = decod_for_standard_location(table15, chislo)
+        if not numpy.array_equal(chislo, pr):
+            print('Ошибка декодирования')
+
+
+
+test_correct()
+test_decod_standart_location()
+
+# fq = 2
+# a = create_generate_matrix(4, 2)
+# h = calc_h_matrix(a, fq)
+# hn = calc_h_matrix(a, fq, False)
+# b = create_table_standard_location(a, fq)
+# d = get_table_syndrom(b, h)
 
 
