@@ -12,20 +12,20 @@ def create_generate_matrix(n, k):
     """
     ed = numpy.eye(k, dtype=int)
     p = {}
-    p[4] = numpy.array([[0,1], [1, 0]])
-    p[15] = numpy.array([[1, 0, 0, 0],
-                         [0, 1, 0, 0],
-                         [0, 0, 1, 0],
-                         [0, 1, 0, 0],
-                         [0, 0, 1, 0],
-                         [0, 0, 0, 1],
-                         [0, 0, 1, 0],
-                         [1, 0, 0, 0],
-                         [0, 1, 0, 0],
-                         [0, 0, 0, 1],
-                         [1, 0, 0, 0]])
-    p[6] = numpy.array([[1, 0], [1, 2], [2, 1], [0, 2]])
-    p[8] = numpy.array([[1, 0, 0, 0], [2, 2, 1, 0], [1, 0, 1, 1], [1, 2, 1, 1] ])
+    p[4] = numpy.array([[1, 1], [1, 0]])
+    p[15] = numpy.array([[1, 0, 0, 1],
+                         [1, 0, 1, 1],
+                         [1, 1, 1, 1],
+                         [0, 1, 1, 1],
+                         [1, 1, 1, 0],
+                         [0, 1, 0, 1],
+                         [1, 0, 1, 0],
+                         [1, 1, 0, 1],
+                         [0, 0, 1, 1],
+                         [0, 1, 1, 0],
+                         [1, 1, 0, 0]])
+    p[6] = numpy.array([[2, 2], [1, 2], [0, 1], [2, 0]])
+    p[8] = numpy.array([[1, 1, 1, 1], [2, 2, 1, 0], [1, 0, 1, 1], [1, 2, 1, 1] ])
     g = numpy.hstack((ed, p[n]))
     return g
 
@@ -55,7 +55,7 @@ def calc_h_matrix(g, f, transp = True):
 
 def bit_xor(string1, string2, f):
     """
-    Побитовое сложение
+    Прибавление ошибки к правильному вектору
     :param string1: первое число в виде строки
     :param string2: второе число в виде строки
     :param f: поле над которым происходит сложение
@@ -64,6 +64,19 @@ def bit_xor(string1, string2, f):
     answer = ''
     for i in range(len(string1)):
         answer += str((int(string1[i]) + int(string2[i]))%f)
+    return answer
+
+def bit_xor_revers(string1, string2, f):
+    """
+        Вычитание ошибки из вектора
+        :param string1: первое число в виде строки
+        :param string2: второе число в виде строки
+        :param f: поле над которым происходит сложение
+        :return: строка с результатом сложения
+        """
+    answer = ''
+    for i in range(len(string1)):
+        answer += str((int(string1[i]) - int(string2[i])) % f)
     return answer
 
 def innum(chislo, ss):
@@ -93,7 +106,11 @@ def create_table_standard_location(matrix, f):
     """
     (k, n) = matrix.shape
     mas = ['0'*n]
-    lc = k+1
+    if f==2:
+        lc = 3
+    else:
+        lc = 2
+
     for i in range(k):
         el = ''
         for j in range(n):
@@ -114,21 +131,59 @@ def create_table_standard_location(matrix, f):
                 else:
                     summa = bit_xor(summa, mas[el+1], f)
         lc += 1
+        check = innum(lc, f)
+
+        if check.count('0')+1==len(check) and check.count('2')<1:
+            lc += 1
         mas.append(summa)
-    pos = '1' + '0'*(n-1)
+
+    # заполнили первую строку таблицы
     table = numpy.array(mas)
+    size = matrix.shape
+    if (size==(2,4)):
+        pos = ['1000', '0100', '0001']
+    elif (size==(11,15)):
+        pos = ['100000000000000', '010000000000000', '001000000000000', '000100000000000',
+               '000010000000000', '000001000000000', '000000100000000',
+               '000000010000000', '000000001000000', '000000000100000',
+               '000000000010000', '000000000001000', '000000000000100',
+               '000000000000010', '000000000000001']
+    elif (size==(4, 6)):
+        pos = ['100000', '010000', '001000', '000100', '000010', '000001', '100001', '100001']
+    else:
+        pos = []
+        chislo = '1'+'0'*7
+        for i in range(8):
+            pos.append(chislo)
+            pos.append(chislo.replace('1', '2'))
+            chislo = '0' + chislo[:-1]
+        chislo = '0' * 8
+        ch = 0
+        while chislo != '11000000':
+            ch += 1
+            chislo = innum(ch, 3)
+            chislo = '0' * (8 - len(chislo)) + chislo
+            if chislo.count('2') == 0 and chislo.count('1') == 2:
+                pos.append(chislo)
+                pos.append(chislo.replace('1', '2'))
+        pos.append('10000002')
+        pos.append('10000020')
+        pos.append('10000200')
+        pos.append('10002000')
+        pos.append('10020000')
+        pos.append('10200000')
+        pos.append('12000000')
+        pos.append('20000001')
+
     for i in range(f**(n-k)-1):
-        mas = [pos]
+        mas = [pos[i]]
         for j in range(1,f**k):
             if (i==0):
-                mas.append(bit_xor(pos, table[j], f))
+                chislo = bit_xor(pos[i], table[j], f)
+                mas.append(chislo)
             else:
-                mas.append(bit_xor(pos, table[0, j], f))
-        if (f==3 and pos.count('1')==1):
-            pos = pos.replace('1', '2')
-        else:
-            pos = '0'+pos[:-1]
-            pos = pos.replace('2', '1')
+                mas.append(bit_xor(pos[i], table[0, j], f))
+
         table = numpy.vstack([table, numpy.array(mas)])
     return table
 
@@ -155,17 +210,24 @@ def decoding_by_syndrome(table, element, f, h):
     :param table: таблица
     :param element: элемент который нужно исправить
     :param f: поле в котором мы работаем
-    :param h: матрица H
+    :param h: матрица H транспонированная
     :return: исправленный элемент
     """
-    element = [int(i) for i in element]
-    element1 = numpy.dot(h, element)
-    element = ''
+    element1 = numpy.dot(element, h)
+    rez_umn = ''
     for i in element1:
-        element += str(i%f)
+        rez_umn += str(i%f)
+    rez_umn = '0'*(h.shape[1]-len(rez_umn)) + rez_umn
+
+    element1 = ''
+    for i in element:
+        element1 += str(i)
+
     for i in range(table.shape[1]):
-        if element==table[0, i]:
-            element = bit_xor(element, table[1, i], f)
+        if rez_umn==table[0, i]:
+
+            element = bit_xor_revers(element1, table[1, i], f)
+            element = numpy.array(list(map(int, element)))
             break
     return element
 
@@ -249,8 +311,8 @@ def test_correct():
     matrixg6 = create_generate_matrix(6, 4)
     matrixh6 = calc_h_matrix(matrixg6, 3)
     correct = True
-    for i in range(2 ** 4):
-        chislo = list(map(int, bin(i)[2:]))
+    for i in range(3 ** 4):
+        chislo = list(map(int, innum(i, 3)))
         if len(chislo) < 4:
             chislo = [0] * (4 - len(chislo)) + chislo
         chislo = numpy.matmul(numpy.array(chislo), matrixg6)
@@ -275,8 +337,8 @@ def test_correct():
     matrixg8 = create_generate_matrix(8, 4)
     matrixh8 = calc_h_matrix(matrixg8, 3)
     correct = True
-    for i in range(2 ** 4):
-        chislo = list(map(int, bin(i)[2:]))
+    for i in range(3 ** 4):
+        chislo = list(map(int, innum(i, 3)))
         if len(chislo) < 4:
             chislo = [0] * (4 - len(chislo)) + chislo
         chislo = numpy.matmul(numpy.array(chislo), matrixg8)
@@ -301,50 +363,260 @@ def test_decod_standart_location():
     table4 = create_table_standard_location(matrix4, 2)
     matrix15 = create_generate_matrix(15,11)
     table15 = create_table_standard_location(matrix15, 2)
-    matrix6 = create_generate_matrix(6,4)
+    matrix6 = create_generate_matrix(6, 4)
     table6 = create_table_standard_location(matrix6, 3)
-    matrix8 = create_generate_matrix(8,4)
+    matrix8 = create_generate_matrix(8, 4)
     table8 = create_table_standard_location(matrix8, 3)
+
+
     """Старт тестов"""
-    t0 = time.time()
     # (4,2) код
-    # for i in range(2**2):
-    #     chislo = list(map(int, bin(i)[2:]))
-    #     if len(chislo) < 2:
-    #         chislo = [0] * (2 - len(chislo)) + chislo
-    #     chislo = numpy.matmul(numpy.array(chislo), matrix4)
-    #     pr = numpy.copy(chislo)
-    #     pos = random.randint(0, 3)
-    #     chislo[pos] = (chislo[pos]+1)%2
-    #
-    #     chislo = decod_for_standard_location(table4, chislo)
-    #     if not numpy.array_equal(chislo, pr):
-    #         print('Ошибка декодирования')
+    t0 = time.time()
+    correct = True
+    summa = 0
+    for i in range(2**2):
+        chislo = list(map(int, bin(i)[2:]))
+        if len(chislo) < 2:
+            chislo = [0] * (2 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrix4)
+        for i in range(len(chislo)):
+            chislo[i] = (chislo[i])%2
+        pr = numpy.copy(chislo)
+        pos = random.randint(0, 3)
+        chislo[pos] = (chislo[pos]+1)%2
+
+        chislo = decod_for_standard_location(table4, chislo)
+        if not numpy.array_equal(chislo, pr):
+            correct = False
+            summa += 1
+    t1 = time.time()
+    if correct:
+        print(f'Программа успешно исправляет все однократные ошибки в (4, 2) коде. Количество тестов - {2**2}. Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
+    else:
+        print(f'Произошла ошибка декодирования в (4, 2) коде. Количество тестов - {2**2}, из них неправильно - {summa}')
 
     # (15, 11) код
+    correct = True
+    t0 = time.time()
     for i in range(2**11):
         chislo = list(map(int, bin(i)[2:]))
         if len(chislo) < 11:
             chislo = [0] * (11 - len(chislo)) + chislo
         chislo = numpy.matmul(numpy.array(chislo), matrix15)
+        for j in range(15):
+            chislo[j] = (chislo[j])%2
         pr = numpy.copy(chislo)
         pos = random.randint(0, 14)
         chislo[pos] = (chislo[pos]+1) % 2
 
         chislo = decod_for_standard_location(table15, chislo)
         if not numpy.array_equal(chislo, pr):
-            print('Ошибка декодирования')
+            correct = False
+    t1 = time.time()
+    if correct:
+        print(f'Программа успешно исправляет все однократные ошибки в (15, 11) коде. Количество тестов - {2**11}. Время работы программы - ', round(t1-t0, 3), ' секунд')
+    else:
+        print('Произошла ошибка декодирования в (15, 11) коде')
+
+
+    # (6, 4, 3) код
+    correct = True
+    t0 = time.time()
+    summa = 0
+    for i in range(3 ** 4):
+        chislo = list(map(int, innum(i, 3)))
+        if len(chislo) < 4:
+            chislo = [0] * (4 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrix6)
+        for j in range(6):
+            chislo[j] = (chislo[j]) % 3
+        pr = numpy.copy(chislo)
+        pos = random.randint(0, 5)
+        chislo[pos] = (chislo[pos] + 1) % 3
+
+        chislo = decod_for_standard_location(table6, chislo)
+        if not numpy.array_equal(chislo, pr):
+            correct = False
+            summa += 1
+    t1 = time.time()
+    if correct:
+        print(f'Программа успешно исправляет все однократные ошибки в (6, 4) коде. Количество тестов - {3**4}. Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
+    else:
+        print(f'Произошла ошибка декодирования в (6, 4) коде. Количество тестов - {3**4}, из них неверно - {summa}')
+
+
+    # (8, 4, 3) код
+    correct = True
+    summa = 0
+    t0 = time.time()
+    for i in range(3 ** 4):
+        chislo = list(map(int, innum(i, 3)))
+        if len(chislo) < 4:
+            chislo = [0] * (4 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrix8)
+        for j in range(8):
+            chislo[j] = (chislo[j]) % 3
+        pr = numpy.copy(chislo)
+        pos = random.randint(0, 7)
+        chislo[pos] = (chislo[pos] + 1) % 3
+
+        chislo = decod_for_standard_location(table8, chislo)
+        if not numpy.array_equal(chislo, pr):
+            correct = False
+            summa += 1
+    t1 = time.time()
+    if correct:
+        print(f'Программа успешно исправляет все однократные ошибки в (8, 4) коде. Количество тестов - {3**4} Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
+    else:
+        print(f'Произошла ошибка декодирования в (8, 4) коде. Количество тестов - {3**4}, из них неверно - {summa}')
+
+
+
+def test_decod_syndrom():
+    """
+    Тестирование декодирования по синдрому
+    """
+    matrix4 = create_generate_matrix(4, 2)
+    table_standart_location = create_table_standard_location(matrix4, 2)
+    matrix_h_4 = calc_h_matrix(matrix4, 2)
+    table4 = get_table_syndrom(table_standart_location, matrix_h_4)
+
+    matrix15 = create_generate_matrix(15, 11)
+    table_standart_location = create_table_standard_location(matrix15, 2)
+    matrix_h_15 = calc_h_matrix(matrix15, 2)
+    table15 = get_table_syndrom(table_standart_location, matrix_h_15)
+
+    matrix6 = create_generate_matrix(6, 4)
+    table_standart_location = create_table_standard_location(matrix6, 3)
+    matrix_h_6 = calc_h_matrix(matrix6, 3)
+    table6 = get_table_syndrom(table_standart_location, matrix_h_6)
+
+    matrix8 = create_generate_matrix(8, 4)
+    table_standart_location = create_table_standard_location(matrix8, 3)
+    matrix_h_8 = calc_h_matrix(matrix8, 3)
+    table8 = get_table_syndrom(table_standart_location, matrix_h_8)
+
+    """Старт тестов"""
+    # (4,2) код
+    t0 = time.time()
+    correct = True
+    summa = 0
+    for i in range(2 ** 2):
+        chislo = list(map(int, bin(i)[2:]))
+        if len(chislo) < 2:
+            chislo = [0] * (2 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrix4)
+        for i in range(len(chislo)):
+            chislo[i] = (chislo[i]) % 2
+
+        pr = numpy.copy(chislo)
+        pos = random.randint(0, 3)
+        chislo[pos] = (chislo[pos] + 1) % 2
+
+        chislo = decoding_by_syndrome(table4, chislo, 2, matrix_h_4)
+        if not numpy.array_equal(chislo, pr):
+            correct = False
+            summa += 1
+    t1 = time.time()
+    if correct:
+        print(
+            f'Программа успешно исправляет все однократные ошибки в (4, 2) коде. Количество тестов - {2 ** 2}. Время работы программы - ',
+            round(t1 - t0, 3), ' секунд')
+    else:
+        print(
+            f'Произошла ошибка декодирования в (4, 2) коде. Количество тестов - {2 ** 2}, из них неправильно - {summa}')
+
+    # (15, 11) код
+    correct = True
+    t0 = time.time()
+    for i in range(2 ** 11):
+
+        chislo = list(map(int, bin(i)[2:]))
+        if len(chislo) < 11:
+            chislo = [0] * (11 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrix15)
+        for j in range(15):
+            chislo[j] = (chislo[j]) % 2
+
+        pr = numpy.copy(chislo)
+        pos = random.randint(0, 14)
+        chislo[pos] = (chislo[pos] + 1) % 2
+
+        chislo = decoding_by_syndrome(table15, chislo, 2, matrix_h_15)
+        if not numpy.array_equal(chislo, pr):
+            correct = False
+    t1 = time.time()
+    if correct:
+        print(
+            f'Программа успешно исправляет все однократные ошибки в (15, 11) коде. Количество тестов - {2 ** 11}. Время работы программы - ',
+            round(t1 - t0, 3), ' секунд')
+    else:
+        print('Произошла ошибка декодирования в (15, 11) коде')
+
+    # (6, 4, 3) код
+    correct = True
+    t0 = time.time()
+    summa = 0
+    for i in range(3 ** 4):
+        chislo = list(map(int, innum(i, 3)))
+        if len(chislo) < 4:
+            chislo = [0] * (4 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrix6)
+        for j in range(6):
+            chislo[j] = (chislo[j]) % 3
+
+        pr = numpy.copy(chislo)
+        pos = random.randint(0, 5)
+        chislo[pos] = (chislo[pos] + 1) % 3
+
+        chislo = decoding_by_syndrome(table6, chislo, 3, matrix_h_6)
+        if not numpy.array_equal(chislo, pr):
+            correct = False
+            summa += 1
+    t1 = time.time()
+    if correct:
+        print(
+            f'Программа успешно исправляет все однократные ошибки в (6, 4) коде. Количество тестов - {3 ** 4}. Время работы программы - ',
+            round(t1 - t0, 3), ' секунд')
+    else:
+        print(f'Произошла ошибка декодирования в (6, 4) коде. Количество тестов - {3 ** 4}, из них неверно - {summa}')
+
+    # (8, 4, 3) код
+    correct = True
+    summa = 0
+    t0 = time.time()
+    for i in range(3 ** 4):
+        chislo = list(map(int, innum(i, 3)))
+        if len(chislo) < 4:
+            chislo = [0] * (4 - len(chislo)) + chislo
+        chislo = numpy.matmul(numpy.array(chislo), matrix8)
+        for j in range(8):
+            chislo[j] = (chislo[j]) % 3
+
+        pr = numpy.copy(chislo)
+        pos = random.randint(0, 7)
+        chislo[pos] = (chislo[pos] + 1) % 3
+
+        chislo = decoding_by_syndrome(table8, chislo, 3, matrix_h_8)
+        if not numpy.array_equal(chislo, pr):
+            correct = False
+            summa += 1
+    t1 = time.time()
+    if correct:
+        print(
+            f'Программа успешно исправляет все однократные ошибки в (8, 4) коде. Количество тестов - {3 ** 4} Время работы программы - ',
+            round(t1 - t0, 3), ' секунд')
+    else:
+        print(f'Произошла ошибка декодирования в (8, 4) коде. Количество тестов - {3 ** 4}, из них неверно - {summa}')
+
 
 
 
 test_correct()
+print('-----------------Декодирование по стандартному расположению-----------------')
 test_decod_standart_location()
-
-# fq = 2
-# a = create_generate_matrix(4, 2)
-# h = calc_h_matrix(a, fq)
-# hn = calc_h_matrix(a, fq, False)
-# b = create_table_standard_location(a, fq)
-# d = get_table_syndrom(b, h)
-
-
+print('-----------------Декодирование по синдрому-----------------')
+test_decod_syndrom()
