@@ -3,31 +3,58 @@ import time
 
 import numpy
 
-def create_generate_matrix(n, k):
+
+def random_vector(length, f):
+    """
+    Функция для создания рандомного вектора длины length
+    :param length: длина вектора
+    :param f: поле над которым строится вектор
+    :return: массив в виде вектора
+    """
+    summa = 0
+    mas = []
+    for i in range(length):
+        el = random.randint(0, f - 1)
+        mas.append(el)
+        if el>0:
+            summa += 1
+
+    while (summa<2 and length>2):
+        summa = 0
+        mas = []
+        for i in range(length):
+            el = random.randint(0, f - 1)
+            mas.append(el)
+            if el>0:
+                summa += 1
+
+    return mas
+
+def create_generate_matrix(n, k, f):
     """
     Функция генерации порождающей канонической матрицы
     :param n: общее количество бит
     :param k:количество информационных бит
+    :param f: поле над которым строится матрица
     :return:матрица-генератор
     """
     ed = numpy.eye(k, dtype=int)
-    p = {}
-    p[4] = numpy.array([[1, 1], [1, 0]])
-    p[15] = numpy.array([[1, 0, 0, 1],
-                         [1, 0, 1, 1],
-                         [1, 1, 1, 1],
-                         [0, 1, 1, 1],
-                         [1, 1, 1, 0],
-                         [0, 1, 0, 1],
-                         [1, 0, 1, 0],
-                         [1, 1, 0, 1],
-                         [0, 0, 1, 1],
-                         [0, 1, 1, 0],
-                         [1, 1, 0, 0]])
-    p[6] = numpy.array([[2, 2], [1, 2], [0, 1], [2, 0]])
-    p[8] = numpy.array([[1, 1, 1, 1], [2, 2, 1, 0], [1, 0, 1, 1], [1, 2, 1, 1] ])
-    g = numpy.hstack((ed, p[n]))
-    return g
+    mas = []
+    el = random_vector(n-k, f)
+    p = numpy.array(el)
+    mas.append(el)
+    for i in range(k-1):
+        el = random_vector(n-k, f)
+        if not el in mas:
+            p = numpy.vstack((p, numpy.array(el)))
+            mas.append(el)
+        else:
+            while el in mas:
+                el = random_vector(n-k, f)
+            p = numpy.vstack((p, numpy.array(el)))
+            mas.append(el)
+
+    return numpy.hstack((ed, p))
 
 
 def calc_h_matrix(g, f, transp = True):
@@ -139,21 +166,11 @@ def create_table_standard_location(matrix, f):
 
     # заполнили первую строку таблицы
     table = numpy.array(mas)
-    size = matrix.shape
-    if (size==(2,4)):
-        pos = ['1000', '0100', '0001']
-    elif (size==(11,15)):
-        pos = ['100000000000000', '010000000000000', '001000000000000', '000100000000000',
-               '000010000000000', '000001000000000', '000000100000000',
-               '000000010000000', '000000001000000', '000000000100000',
-               '000000000010000', '000000000001000', '000000000000100',
-               '000000000000010', '000000000000001']
-    elif (size==(4, 6)):
-        pos = ['100000', '010000', '001000', '000100', '000010', '000001', '100001', '100001']
-    else:
+    (k, n) = matrix.shape
+    if (n==8 and k==4):
         pos = []
         chislo = '1'+'0'*7
-        for i in range(8):
+        for i in range(n):
             pos.append(chislo)
             pos.append(chislo.replace('1', '2'))
             chislo = '0' + chislo[:-1]
@@ -166,14 +183,25 @@ def create_table_standard_location(matrix, f):
             if chislo.count('2') == 0 and chislo.count('1') == 2:
                 pos.append(chislo)
                 pos.append(chislo.replace('1', '2'))
-        pos.append('10000002')
-        pos.append('10000020')
-        pos.append('10000200')
-        pos.append('10002000')
-        pos.append('10020000')
-        pos.append('10200000')
-        pos.append('12000000')
-        pos.append('20000001')
+        chislo = '0' * 8
+        ch = 0
+        while chislo!=('22' + '0'*(n-2)) and len(pos)<f**(n-k)-1:
+            ch += 1
+            chislo = innum(ch, 3)
+            chislo = '0' * (8 - len(chislo)) + chislo
+            if chislo.count('2') == 1 and chislo.count('1') == 1:
+                pos.append(chislo)
+                pos.append(chislo.replace('1', '2'))
+    else:
+        pos = []
+        chislo = '1' + '0' * (n - 1)
+        pos.append(chislo)
+        for i in range(f**(n-k)-2):
+            chislo = '0' + chislo[:-1]
+            pos.append(chislo)
+            if chislo.count('0')==n:
+                chislo = '11' + '0'*(n-2)
+
 
     for i in range(f**(n-k)-1):
         mas = [pos[i]]
@@ -260,7 +288,7 @@ def test_correct():
 
     """Начало тестов для кода (4, 2)"""
     print('Проверка матриц для (4, 2) кода')
-    matrixg4 = create_generate_matrix(4, 2)
+    matrixg4 = create_generate_matrix(4, 2, 2)
     matrixh4 = calc_h_matrix(matrixg4, 2)
     correct = True
     for i in range(4):
@@ -283,7 +311,7 @@ def test_correct():
 
     """Начало тестов для кода (15, 11)"""
     print('Проверка матриц для (15, 11) кода')
-    matrixg15 = create_generate_matrix(15, 11)
+    matrixg15 = create_generate_matrix(15, 11, 2)
     matrixh15 = calc_h_matrix(matrixg15, 2)
     correct = True
     for i in range(2**11):
@@ -308,7 +336,7 @@ def test_correct():
 
     """Начало тестов для (6, 4, 3) кода"""
     print('Проверка матриц для (6, 4, 3) кода')
-    matrixg6 = create_generate_matrix(6, 4)
+    matrixg6 = create_generate_matrix(6, 4, 3)
     matrixh6 = calc_h_matrix(matrixg6, 3)
     correct = True
     for i in range(3 ** 4):
@@ -334,7 +362,7 @@ def test_correct():
 
     """Начало тестов для (8, 4, 3) кода"""
     print('Проверка матриц для (8, 4, 3) кода')
-    matrixg8 = create_generate_matrix(8, 4)
+    matrixg8 = create_generate_matrix(8, 4, 3)
     matrixh8 = calc_h_matrix(matrixg8, 3)
     correct = True
     for i in range(3 ** 4):
@@ -359,13 +387,13 @@ def test_correct():
 
 
 def test_decod_standart_location():
-    matrix4 = create_generate_matrix(4,2)
+    matrix4 = create_generate_matrix(4,2, 2)
     table4 = create_table_standard_location(matrix4, 2)
-    matrix15 = create_generate_matrix(15,11)
+    matrix15 = create_generate_matrix(15,11, 2)
     table15 = create_table_standard_location(matrix15, 2)
-    matrix6 = create_generate_matrix(6, 4)
+    matrix6 = create_generate_matrix(6, 4, 3)
     table6 = create_table_standard_location(matrix6, 3)
-    matrix8 = create_generate_matrix(8, 4)
+    matrix8 = create_generate_matrix(8, 4, 3)
     table8 = create_table_standard_location(matrix8, 3)
 
 
@@ -394,10 +422,12 @@ def test_decod_standart_location():
         print(f'Программа успешно исправляет все однократные ошибки в (4, 2) коде. Количество тестов - {2**2}. Время работы программы - ',
               round(t1 - t0, 3), ' секунд')
     else:
-        print(f'Произошла ошибка декодирования в (4, 2) коде. Количество тестов - {2**2}, из них неправильно - {summa}')
+        print(f'Произошла ошибка декодирования в (4, 2) коде c 1 ошибкой. Количество тестов - {2**2}, из них неправильно - {summa}. Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
 
     # (15, 11) код
     correct = True
+    summa = 0
     t0 = time.time()
     for i in range(2**11):
         chislo = list(map(int, bin(i)[2:]))
@@ -413,11 +443,12 @@ def test_decod_standart_location():
         chislo = decod_for_standard_location(table15, chislo)
         if not numpy.array_equal(chislo, pr):
             correct = False
+            summa += 1
     t1 = time.time()
     if correct:
         print(f'Программа успешно исправляет все однократные ошибки в (15, 11) коде. Количество тестов - {2**11}. Время работы программы - ', round(t1-t0, 3), ' секунд')
     else:
-        print('Произошла ошибка декодирования в (15, 11) коде')
+        print(f'Произошла ошибка декодирования в (15, 11) коде c 1 ошибкой. Количество ошибок {summa}')
 
 
     # (6, 4, 3) код
@@ -444,7 +475,8 @@ def test_decod_standart_location():
         print(f'Программа успешно исправляет все однократные ошибки в (6, 4) коде. Количество тестов - {3**4}. Время работы программы - ',
               round(t1 - t0, 3), ' секунд')
     else:
-        print(f'Произошла ошибка декодирования в (6, 4) коде. Количество тестов - {3**4}, из них неверно - {summa}')
+        print(f'Произошла ошибка декодирования в (6, 4) коде c 1 ошибкой. Количество тестов - {3**4}, из них неверно - {summa}. Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
 
 
     # (8, 4, 3) код
@@ -471,7 +503,8 @@ def test_decod_standart_location():
         print(f'Программа успешно исправляет все однократные ошибки в (8, 4) коде. Количество тестов - {3**4} Время работы программы - ',
               round(t1 - t0, 3), ' секунд')
     else:
-        print(f'Произошла ошибка декодирования в (8, 4) коде. Количество тестов - {3**4}, из них неверно - {summa}')
+        print(f'Произошла ошибка декодирования в (8, 4) коде c 1 ошибкой. Количество тестов - {3**4}, из них неверно - {summa}. Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
 
 
 
@@ -479,22 +512,22 @@ def test_decod_syndrom():
     """
     Тестирование декодирования по синдрому
     """
-    matrix4 = create_generate_matrix(4, 2)
+    matrix4 = create_generate_matrix(4, 2, 2)
     table_standart_location = create_table_standard_location(matrix4, 2)
     matrix_h_4 = calc_h_matrix(matrix4, 2)
     table4 = get_table_syndrom(table_standart_location, matrix_h_4)
 
-    matrix15 = create_generate_matrix(15, 11)
+    matrix15 = create_generate_matrix(15, 11, 2)
     table_standart_location = create_table_standard_location(matrix15, 2)
     matrix_h_15 = calc_h_matrix(matrix15, 2)
     table15 = get_table_syndrom(table_standart_location, matrix_h_15)
 
-    matrix6 = create_generate_matrix(6, 4)
+    matrix6 = create_generate_matrix(6, 4, 3)
     table_standart_location = create_table_standard_location(matrix6, 3)
     matrix_h_6 = calc_h_matrix(matrix6, 3)
     table6 = get_table_syndrom(table_standart_location, matrix_h_6)
 
-    matrix8 = create_generate_matrix(8, 4)
+    matrix8 = create_generate_matrix(8, 4, 3)
     table_standart_location = create_table_standard_location(matrix8, 3)
     matrix_h_8 = calc_h_matrix(matrix8, 3)
     table8 = get_table_syndrom(table_standart_location, matrix_h_8)
@@ -527,7 +560,8 @@ def test_decod_syndrom():
             round(t1 - t0, 3), ' секунд')
     else:
         print(
-            f'Произошла ошибка декодирования в (4, 2) коде. Количество тестов - {2 ** 2}, из них неправильно - {summa}')
+            f'Произошла ошибка декодирования в (4, 2) коде c 1 ошибкой. Количество тестов - {2 ** 2}, из них неправильно - {summa}. Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
 
     # (15, 11) код
     correct = True
@@ -554,7 +588,7 @@ def test_decod_syndrom():
             f'Программа успешно исправляет все однократные ошибки в (15, 11) коде. Количество тестов - {2 ** 11}. Время работы программы - ',
             round(t1 - t0, 3), ' секунд')
     else:
-        print('Произошла ошибка декодирования в (15, 11) коде')
+        print('Произошла ошибка декодирования в (15, 11) коде c 1 ошибкой')
 
     # (6, 4, 3) код
     correct = True
@@ -582,7 +616,8 @@ def test_decod_syndrom():
             f'Программа успешно исправляет все однократные ошибки в (6, 4) коде. Количество тестов - {3 ** 4}. Время работы программы - ',
             round(t1 - t0, 3), ' секунд')
     else:
-        print(f'Произошла ошибка декодирования в (6, 4) коде. Количество тестов - {3 ** 4}, из них неверно - {summa}')
+        print(f'Произошла ошибка декодирования в (6, 4) коде c 1 ошибкой. Количество тестов - {3 ** 4}, из них неверно - {summa}. Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
 
     # (8, 4, 3) код
     correct = True
@@ -610,7 +645,8 @@ def test_decod_syndrom():
             f'Программа успешно исправляет все однократные ошибки в (8, 4) коде. Количество тестов - {3 ** 4} Время работы программы - ',
             round(t1 - t0, 3), ' секунд')
     else:
-        print(f'Произошла ошибка декодирования в (8, 4) коде. Количество тестов - {3 ** 4}, из них неверно - {summa}')
+        print(f'Произошла ошибка декодирования в (8, 4) коде c 1 ошибкой. Количество тестов - {3 ** 4}, из них неверно - {summa}. Время работы программы - ',
+              round(t1 - t0, 3), ' секунд')
 
 
 
